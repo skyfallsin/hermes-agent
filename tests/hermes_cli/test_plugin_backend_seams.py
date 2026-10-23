@@ -62,6 +62,16 @@ def test_evaluate_url_safety_refuses_url_embedding_a_secret():
     assert isinstance(result, dict) and result.get("success") is False
 
 
+def test_normalize_request_url_punycodes_idn_host():
+    out = _make_ctx().normalize_request_url("https://b\u00fccher.example/caf\u00e9")
+    assert out.startswith("https://xn--")  # IDN host to punycode
+    assert " " not in out and "\u00e9" not in out  # non-ASCII path percent-encoded
+
+
+def test_normalize_request_url_leaves_plain_ascii_url_intact():
+    assert _make_ctx().normalize_request_url("https://example.com/a/b") == "https://example.com/a/b"
+
+
 def test_evaluate_url_safety_passes_auto_local_through(monkeypatch):
     ctx = _make_ctx()
     import tools.browser_url_policy as policy

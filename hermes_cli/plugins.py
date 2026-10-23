@@ -936,6 +936,14 @@ class PluginContext:
         from tools.browser_url_policy import evaluate_url_safety
         return evaluate_url_safety(url, auto_local=auto_local)
 
+    def normalize_request_url(self, url: str) -> str:
+        """ASCII-normalize a URL the way core does before handing it to a browser/HTTP backend
+        (IDN host to punycode, non-ASCII path/query percent-encoded), so a backend plugin sends the
+        same wire form core's own browser would and matches what :meth:`evaluate_url_safety`
+        checked. A faithful replacement for importing ``tools.url_safety.normalize_url_for_request``."""
+        from tools.url_safety import normalize_url_for_request
+        return normalize_url_for_request(url)
+
     def ssrf_guard_active(self) -> bool:
         """True when page-driven private-network access must be guarded for the active backend (a
         cloud or off-host browser without ``browser.allow_private_urls``). A backend that lets the

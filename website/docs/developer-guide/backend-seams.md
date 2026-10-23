@@ -51,6 +51,19 @@ browser:
 Pass `auto_local=True` only for a URL you've already routed to a local sidecar;
 it relaxes the private-address floor and nothing else.
 
+To send a backend the same wire form Hermes's own browser would — and to match
+what `evaluate_url_safety` checked — normalize first:
+
+```python
+blocked = ctx.evaluate_url_safety(url, auto_local=True)
+if blocked is not None:
+    return blocked
+wire_url = ctx.normalize_request_url(url)  # IDN host to punycode, non-ASCII path/query percent-encoded
+```
+
+`normalize_request_url(url)` is the public form of core's
+`normalize_url_for_request`.
+
 If your backend lets the page evaluate arbitrary navigation (an `eval`-style
 action), gate it:
 
