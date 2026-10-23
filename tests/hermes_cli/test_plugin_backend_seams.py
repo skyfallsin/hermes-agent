@@ -88,6 +88,22 @@ def test_evaluate_url_safety_passes_auto_local_through(monkeypatch):
     assert captured == {"url": "https://host.internal/", "auto_local": True}
 
 
+def test_auto_local_relaxes_only_the_private_floor_against_real_core(monkeypatch):
+    # Force a non-local backend so the private-address floor actually engages (a local backend
+    # would skip it regardless, hiding what auto_local does).
+    import tools.browser_session_cloud as cloud
+
+    monkeypatch.setattr(cloud, "is_local_backend", lambda: False)
+    monkeypatch.setattr(cloud, "allow_private_urls", lambda: False)
+    ctx = _make_ctx()
+    # A private/LAN literal is refused for a non-local backend...
+    assert isinstance(ctx.evaluate_url_safety("http://192.168.0.10/"), dict)
+    # ...and auto_local=True relaxes exactly that floor (the Camofox local-browser stance).
+    assert ctx.evaluate_url_safety("http://192.168.0.10/", auto_local=True) is None
+    # auto_local never relaxes the cloud-metadata floor.
+    assert isinstance(ctx.evaluate_url_safety("http://169.254.169.254/", auto_local=True), dict)
+
+
 def test_ssrf_guard_active_delegates(monkeypatch):
     ctx = _make_ctx()
     import tools.browser_url_policy as policy
