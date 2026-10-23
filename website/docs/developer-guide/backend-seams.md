@@ -41,15 +41,17 @@ browser:
    — refused unconditionally. A local Chromium on a cloud VM still reaches the
    host's credentials endpoint.
 2. **Private / internal addresses** — refused unless the backend is local, the
-   URL is served by a hybrid local sidecar (`auto_local=True`), or
+   URL will be opened by a local browser (`auto_local=True`), or
    `browser.allow_private_urls` is set.
 3. **Website allow/deny policy** — `security.website_blocklist`.
 4. **Secrets in the URL** — a URL that embeds something shaped like an API key
    or token is refused (raw and percent-decoded), so a prompt injection can't
    exfiltrate a secret through a navigation.
 
-Pass `auto_local=True` only for a URL you've already routed to a local sidecar;
-it relaxes the private-address floor and nothing else.
+Pass `auto_local=True` when the URL will be opened by a local browser — a
+hybrid local sidecar, or a plugin whose backend is itself a local browser
+(Camofox does this). It relaxes the private-address floor and nothing else;
+the metadata, blocklist and secret-in-URL floors still apply.
 
 To send a backend the same wire form Hermes's own browser would — and to match
 what `evaluate_url_safety` checked — normalize first:
@@ -64,19 +66,6 @@ wire_url = ctx.normalize_request_url(url)  # IDN host to punycode, non-ASCII pat
 `normalize_request_url(url)` is the public form of core's
 `normalize_url_for_request`.
 
-If your backend lets the page evaluate arbitrary navigation (an `eval`-style
-action), gate it:
-
-```python
-if ctx.ssrf_guard_active():
-    # pre-scan URL literals in the expression with ctx.evaluate_url_safety(...)
-    ...
-```
-
-`ssrf_guard_active()` is `True` when private-network access must be guarded for
-the active backend (a cloud or off-host browser without
-`browser.allow_private_urls`).
-
 ## Secret redaction
 
 ```python
@@ -87,7 +76,7 @@ safe = ctx.redact_text(page_text)
 secret_file=False, redact_url_credentials=False)` runs text a plugin is about
 to hand the model through Hermes's redactor. It honours
 `security.redact_secrets` and covers the vault plus any patterns the plugin
-registered with [`register_redaction_patterns`](plugins/index.md). Use
+registered with `ctx.register_redaction_patterns`. Use
 `force=True` for backend output the user never typed (a page snapshot, a
 console log) so secret-shaped values are redacted even when passive redaction
 is off. Plugins can over-redact, never weaken the built-ins.

@@ -1,5 +1,5 @@
 """Backend seams on ``PluginContext`` (``ctx.redact_text`` / ``ctx.evaluate_url_safety`` /
-``ctx.ssrf_guard_active`` / ``ctx.agent_visible_cache_path`` / ``ctx.core_bundles_tool``).
+``ctx.normalize_request_url`` / ``ctx.agent_visible_cache_path`` / ``ctx.core_bundles_tool``).
 
 These let a browser/web/terminal backend plugin reuse Hermes's own URL policy, secret redaction
 and cache-path translation instead of importing core internals that move between releases
@@ -21,7 +21,7 @@ def _make_ctx(plugin_key: str = "backend-plugin") -> PluginContext:
 
 def test_redact_text_delegates_to_core_redactor(monkeypatch):
     ctx = _make_ctx()
-    import agent.redact as redact
+    from agent import redact
 
     seen = {}
 
@@ -81,7 +81,6 @@ def test_evaluate_url_safety_passes_auto_local_through(monkeypatch):
     def _fake(url, *, auto_local=False):
         captured["url"] = url
         captured["auto_local"] = auto_local
-        return None
 
     monkeypatch.setattr(policy, "evaluate_url_safety", _fake)
     assert ctx.evaluate_url_safety("https://host.internal/", auto_local=True) is None
@@ -102,15 +101,6 @@ def test_auto_local_relaxes_only_the_private_floor_against_real_core(monkeypatch
     assert ctx.evaluate_url_safety("http://192.168.0.10/", auto_local=True) is None
     # auto_local never relaxes the cloud-metadata floor.
     assert isinstance(ctx.evaluate_url_safety("http://169.254.169.254/", auto_local=True), dict)
-
-
-def test_ssrf_guard_active_delegates(monkeypatch):
-    ctx = _make_ctx()
-    import tools.browser_url_policy as policy
-    monkeypatch.setattr(policy, "eval_ssrf_guard_active", lambda: True)
-    assert ctx.ssrf_guard_active() is True
-    monkeypatch.setattr(policy, "eval_ssrf_guard_active", lambda: False)
-    assert ctx.ssrf_guard_active() is False
 
 
 def test_agent_visible_cache_path_delegates(monkeypatch):
@@ -138,11 +128,17 @@ def test_core_bundles_tool_detects_present_and_absent_builtins():
     assert ctx.core_bundles_tool("definitely_not_a_core_tool_zzz") is False
 
 
-def test_core_bundles_tool_does_not_import_the_module(monkeypatch):
-    # The probe resolves on the package path; it must not execute the module.
-    import sys
+def test_core_bundles_tool_does_not_execute_the_module(monkeypatch):
+    # The probe resolves the spec on the package path; it must never execute a module body.
+    # Prove it by making the import machinery raise -- a real import would blow up, the
+    # spec-only probe does not.
+    import importlib
+
     ctx = _make_ctx()
+
+    def _boom(*a, **k):
+        raise AssertionError("core_bundles_tool must not import a module")
+
+    monkeypatch.setattr(importlib, "import_module", _boom)
     assert ctx.core_bundles_tool("url_safety") is True
-    # find_spec may import the ``tools`` package, but never the probed submodule's body
-    # beyond what was already loaded; calling twice stays stable and raises nothing.
-    assert ctx.core_bundles_tool("url_safety") is True
+    assert ctx.core_bundles_tool("definitely_not_a_core_tool_zzz") is False
