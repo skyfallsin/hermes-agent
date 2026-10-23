@@ -54,6 +54,7 @@ Hermes already ships these for plugin authors:
 - **Ship skills with your plugin:** register them with `ctx.register_skill()`. See [Bundle skills](#bundle-skills).
 - **Ask for privileged host surfaces:** declare them under `capabilities:` so users get a single consent screen. See [Declaring capabilities](#declaring-capabilities).
 - **Make LLM calls:** use `ctx.llm`, which comes with host-owned credentials and a fail-closed trust gate. See [Plugin LLM Access](../plugin-llm-access.md).
+- **Reuse core's guardrails:** a browser/web/terminal backend plugin can apply Hermes's own URL policy, secret redaction and cache-path translation through `ctx` instead of importing core internals. See [Backend Seams](../backend-seams.md).
 :::
 
 ## Portable Agent Plugins v1 packages

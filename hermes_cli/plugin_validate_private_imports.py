@@ -156,5 +156,7 @@ def check_private_imports(report, plugin_dir: Path) -> None:
         report.warn(
             "private core imports (catalog rule 9: public surfaces only; these can break on any release): "
             + "; ".join(hits[:_SHOWN]) + more
-            + ". Use ctx.* / documented plugin APIs, or open an issue for the seam you need."
+            + ". Use ctx.* / documented plugin APIs, or open an issue for the seam you need"
+            + " (backend plugins: ctx has core's URL policy, redaction and cache-path seams --"
+            + " see developer-guide/backend-seams.md)."
         )

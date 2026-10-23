@@ -129,7 +129,9 @@ the gallery. There is no separate listing to maintain.
    core override` check), and warns (without failing) on each import of an
    undocumented core module, by file and line. If the hook you need does not
    exist, open an issue describing it: we would rather add the seam than list
-   a patch.
+   a patch. A backend plugin that needs core's URL policy, secret redaction or
+   cache-path translation already has them on `ctx` — see [Backend
+   Seams](../backend-seams.md).
 10. **Dependency security policy is the plugin's.** Hermes's 3-day
    `exclude-newer` release-age check covers Hermes's own dependencies only, at
    the time Hermes locks them; a plugin's `python_dependencies` /
